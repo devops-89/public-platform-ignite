@@ -59,7 +59,7 @@ const Header = () => {
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           gap: 2,
           position: "fixed",
           top: 0,
@@ -84,7 +84,12 @@ const Header = () => {
               }),
         }}
       >
-        {/* Settings Icon */}
+        {/* Left Side: Title */}
+        <Typography variant="h6" sx={{ fontWeight: 700, color: colors.TEXT_PRIMARY }}>
+          Ignite Innovation
+        </Typography>
+
+        {/* Right Side: Settings Icon (Commented) and Avatar */}
         {/* <Tooltip title="Settings">
           <IconButton
             size="small"

@@ -81,7 +81,7 @@ export default function VerifyOtp() {
       };
 
       const res = await PublicAuthControllers.verifyPublicOtp(payload);
-      showSnackbar(res?.data?.message || "Account activated successfully.", "success");
+      showSnackbar("Your account has been activated successfully.", "success");
       
       // Store token if returned
       const token = res?.data?.data?.accessToken || res?.data?.accessToken || res?.data?.data?.token || res?.data?.token;

@@ -9,8 +9,8 @@ import { SnackbarProvider } from "@/context/SnackbarContext";
 import LayoutWrapper from "@/components/widgets/Layout-Wrapper";
 
 export const metadata: Metadata = {
-  title: "Public Voting Panel",
-  description: "Public Voting Panel for digixito",
+  title: "Ignite Innovation",
+  description: "Ignite Innovation",
 };
 
 export default function RootLayout({

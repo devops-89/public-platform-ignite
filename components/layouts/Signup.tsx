@@ -43,7 +43,7 @@ export default function Signup() {
         const response = await PublicAuthControllers.createPublicUser(values);
         
         if (response.status === 201 || response.data?.message) {
-          showSnackbar(response.data.message || "Registered successfully. Please verify OTP.", "success");
+          showSnackbar("You registered successfully. Please verify OTP.", "success");
           // Redirect to verify-otp page with email in query params
           setTimeout(() => {
           router.push(`/verify-otp?email=${encodeURIComponent(values.email)}`);
