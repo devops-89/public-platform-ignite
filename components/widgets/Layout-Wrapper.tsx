@@ -5,7 +5,6 @@ import React from "react";
 import Header from "./Header";
 import LayoutProvider from "./Layout-Provider";
 import Modal from "./Modal";
-import Sidebar from "./Sidebar";
 
 interface LayoutWrapperProps {
   children: React.ReactNode;

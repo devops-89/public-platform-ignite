@@ -1,8 +1,10 @@
 import { create } from "zustand";
 
+import React from "react";
+
 interface ModalState {
-  content: boolean | any;
-  showModal: (content: any) => void;
+  content: boolean | React.ReactNode;
+  showModal: (content: React.ReactNode) => void;
   hideModal: () => void;
 }
 

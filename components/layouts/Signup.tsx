@@ -1,25 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import { useSnackbar } from "@/context/SnackbarContext";
+import { useAppTheme } from "@/context/ThemeContext";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import {
   Box,
   Button,
   Container,
+  IconButton,
+  InputAdornment,
+  Paper,
   TextField,
   Typography,
-  Paper,
-  Alert,
-  Link,
-  InputAdornment,
-  IconButton,
 } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useFormik } from "formik";
-import * as Yup from "yup";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import * as Yup from "yup";
 import { PublicAuthControllers } from "../../api/publicAuthControllers";
-import { useAppTheme } from "@/context/ThemeContext";
-import { useSnackbar } from "@/context/SnackbarContext";
 
 const validationSchema = Yup.object({
   fullName: Yup.string().required("Full Name is required"),
@@ -48,11 +46,11 @@ export default function Signup() {
           showSnackbar(response.data.message || "Registered successfully. Please verify OTP.", "success");
           // Redirect to verify-otp page with email in query params
           setTimeout(() => {
-             router.push(`/verify-otp?email=${encodeURIComponent(values.email)}`);
+          router.push(`/verify-otp?email=${encodeURIComponent(values.email)}`);
           }, 1500);
         }
-      } catch (error: any) {
-        showSnackbar(error.response?.data?.message || "An error occurred during signup.", "error");
+      } catch (error: unknown) {
+        showSnackbar((error as { response?: { data?: { message?: string } } }).response?.data?.message || "An error occurred during signup.", "error");
       }
     },
   });

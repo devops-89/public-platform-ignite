@@ -10,8 +10,8 @@ export const userSecuredApi = axios.create({
 });
 
 userSecuredApi.interceptors.request.use(
-  (config: InternalAxiosRequestConfig<any>) => {
-    let token = typeof window !== "undefined" ? localStorage.getItem("publicAccessToken") : null;
+  (config: InternalAxiosRequestConfig<unknown>) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("publicAccessToken") : null;
     if (token && config.headers) {
       config.headers.set("Authorization", `Bearer ${token}`);
     }
@@ -27,8 +27,8 @@ export const contestSecuredApi = axios.create({
 });
 
 contestSecuredApi.interceptors.request.use(
-  (config: InternalAxiosRequestConfig<any>) => {
-    let token = typeof window !== "undefined" ? localStorage.getItem("publicAccessToken") : null;
+  (config: InternalAxiosRequestConfig<unknown>) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("publicAccessToken") : null;
     if (token && config.headers) {
       config.headers.set("Authorization", `Bearer ${token}`);
     }

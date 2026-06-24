@@ -1,7 +1,7 @@
 import { contestSecuredApi, userSecuredApi } from "./config";
 
 export const entryControllers = {
-  getAllEntries: async (contestId?: string) => {
+  getAllEntries: async () => {
     try {
       // the user explicitly asked to use the endpoint with status=semifinal on local_user_url
       const response = await userSecuredApi.get(

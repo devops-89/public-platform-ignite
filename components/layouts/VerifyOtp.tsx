@@ -1,8 +1,8 @@
 "use client";
 
+import { useSnackbar } from "@/context/SnackbarContext";
 import { useAppTheme } from "@/context/ThemeContext";
 import {
-  Alert,
   Box,
   Button,
   Container,
@@ -11,9 +11,8 @@ import {
   Typography,
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { PublicAuthControllers } from "../../api/publicAuthControllers";
-import { useSnackbar } from "@/context/SnackbarContext";
 
 export default function VerifyOtp() {
   const { colors } = useAppTheme();
@@ -98,9 +97,10 @@ export default function VerifyOtp() {
       }
       
       router.push("/gallery");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showSnackbar(err?.response?.data?.message || err?.message || "Invalid OTP. Please try again.", "error");
+      const error = err as { response?: { data?: { message?: string } }, message?: string };
+      showSnackbar(error?.response?.data?.message || error?.message || "Invalid OTP. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -216,9 +216,9 @@ export default function VerifyOtp() {
             
             <Box sx={{ mt: 3 }}>
               <Typography variant="body2" sx={{ color: colors.TEXT_SECONDARY }}>
-                Didn't receive the code?{" "}
-                <Button 
-                  variant="text" 
+                Didn&apos;t receive the code?{" "}
+                <Button
+                  variant="text"
                   sx={{ textTransform: "none", p: 0, minWidth: "auto", fontWeight: 600, color: colors.PRIMARY }}
                   onClick={() => router.push("/")}
                 >

@@ -1,28 +1,25 @@
 "use client";
+import { EntryItem, FormField, LooseObject } from "../../types";
 
 import {
-  Box,
-  Button,
-  Card,
-  CardActions,
-  CardContent,
-  CardMedia,
-  Chip,
-  Container,
-  Grid,
-  Typography,
-  CircularProgress,
+    Box,
+    Button,
+    Card,
+    Chip,
+    CircularProgress,
+    Container,
+    Grid,
+    Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { entryControllers } from "../../api/entryControllers";
-import { contestControllers } from "../../api/contestControllers";
 
 export default function Gallery() {
   const router = useRouter();
-  const [entries, setEntries] = useState<any[]>([]);
-  const [templateFields, setTemplateFields] = useState<any[]>([]);
-  const [userFields, setUserFields] = useState<any[]>([]);
+  const [entries, setEntries] = useState<EntryItem[]>([]);
+  const [templateFields, setTemplateFields] = useState<FormField[]>([]);
+  const [userFields, setUserFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(true);
 
   const CONTEST_ID = "ae1fb2a4-4da5-44ed-ae85-7fb0659a1ab6";
@@ -31,7 +28,7 @@ export default function Gallery() {
     const fetchEntriesAndFields = async () => {
       try {
         setLoading(true);
-        const entriesRes = await entryControllers.getAllEntries(CONTEST_ID);
+        const entriesRes = await entryControllers.getAllEntries();
         
         let docs = [];
         if (entriesRes?.data?.docs) {
@@ -42,7 +39,7 @@ export default function Gallery() {
         
         // Filter entries locally by the contest ID
         docs = docs.filter(
-          (e: any) => e.contest_id === CONTEST_ID || e.contest?.id === CONTEST_ID
+          (e: EntryItem) => e.contest_id === CONTEST_ID || e.contest?.id === CONTEST_ID
         );
         
         setEntries(docs);
@@ -50,8 +47,8 @@ export default function Gallery() {
         const firstEntry = docs[0];
         const contestData = firstEntry?.contest;
 
-        let tFields: any[] = [];
-        let uFields: any[] = [];
+        let tFields: FormField[] = [];
+        let uFields: FormField[] = [];
         if (contestData?.entryLevelTemplate?.schema?.fields) {
           tFields = contestData.entryLevelTemplate.schema.fields;
         } else if (contestData?.entry_level_template?.schema?.fields) {
@@ -76,7 +73,7 @@ export default function Gallery() {
     fetchEntriesAndFields();
   }, []);
 
-  const getImageUrl = (dataObj: any) => {
+  const getImageUrl = (dataObj: Record<string, string> | undefined) => {
     if (!dataObj) return "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80";
     
     // Check if any specific field ID corresponds to an image upload in templateFields
@@ -96,11 +93,11 @@ export default function Gallery() {
     return "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80";
   };
 
-  const getTitle = (entry: any) => {
+  const getTitle = (entry: EntryItem) => {
     const subData = entry?.submission?.data || {};
     let title = "";
 
-    const entryTitleField = templateFields?.find((f: any) => {
+    const entryTitleField = templateFields?.find((f: FormField) => {
       const l = f.label?.toLowerCase() || "";
       return l.includes("title") || l.includes("project") || l.includes("name");
     });
@@ -116,40 +113,40 @@ export default function Gallery() {
     return title;
   };
 
-  const getAuthor = (entry: any) => {
-    const firstNameField = userFields.find((f: any) => {
+  const getAuthor = (entry: EntryItem) => {
+    const firstNameField = userFields.find((f: FormField) => {
       const l = f.label?.toLowerCase().replace(/\s+/g, '') || "";
       return l.includes("firstname") || l === "first";
     });
-    const lastNameField = userFields.find((f: any) => {
+    const lastNameField = userFields.find((f: FormField) => {
       const l = f.label?.toLowerCase().replace(/\s+/g, '') || "";
       return l.includes("lastname") || l === "last";
     });
-    const fullNameField = userFields.find((f: any) => {
+    const fullNameField = userFields.find((f: FormField) => {
       const l = f.label?.toLowerCase().replace(/\s+/g, '') || "";
       return l.includes("fullname") || l === "name" || (l.includes("name") && !l.includes("first") && !l.includes("last"));
     });
 
-    const rawAuthorData = entry?.participant?.submission?.data || entry?.participant?.user || entry?.user || entry?.author || entry?.participant || {};
-    const authorData = rawAuthorData?.data || rawAuthorData || (entry?.participant as any)?.data || (entry?.participant as any)?.participant_profile_data || {};
+    const rawAuthorData = (entry?.participant?.submission?.data || entry?.participant?.user || entry?.user || entry?.author || entry?.participant || {}) as LooseObject;
+    const authorData = (rawAuthorData?.data || rawAuthorData || (entry?.participant as LooseObject)?.data || (entry?.participant as LooseObject)?.participant_profile_data || {}) as Record<string, string>;
     let authorName = "";
 
     if (firstNameField || lastNameField) {
-      const first = firstNameField ? (authorData[firstNameField.label] || authorData[firstNameField.id]) : "";
-      const last = lastNameField ? (authorData[lastNameField.label] || authorData[lastNameField.id]) : "";
+      const first = firstNameField ? (authorData[firstNameField.label as string] || authorData[firstNameField.id]) : "";
+      const last = lastNameField ? (authorData[lastNameField.label as string] || authorData[lastNameField.id]) : "";
       authorName = `${first || ""} ${last || ""}`.trim();
     }
     
     if (!authorName && fullNameField) {
-      authorName = authorData[fullNameField.label] || authorData[fullNameField.id];
+      authorName = authorData[fullNameField.label as string] || authorData[fullNameField.id];
     }
 
     if (!authorName) {
-      const fallback = userFields.find((f: any) => f.label?.toLowerCase().includes("name"));
-      if (fallback && (authorData[fallback.label] || authorData[fallback.id])) {
-        authorName = authorData[fallback.label] || authorData[fallback.id];
+      const fallback = userFields.find((f: FormField) => f.label?.toLowerCase().includes("name"));
+      if (fallback && (authorData[fallback.label as string] || authorData[fallback.id])) {
+        authorName = authorData[fallback.label as string] || authorData[fallback.id];
       } else {
-        authorName = authorData.yg9snrxlh || authorData["fullName"] || authorData["name"] || authorData["firstName"] || entry?.author_name || entry?.participant_name || entry?.participant?.name || entry?.user?.name;
+        authorName = authorData.yg9snrxlh || authorData["fullName"] || authorData["name"] || authorData["firstName"] || (entry?.author_name as string) || (entry?.participant_name as string) || (entry?.participant?.name as string) || (entry?.user?.name as string);
       }
     }
 
@@ -158,95 +155,43 @@ export default function Gallery() {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      {/* Animated Hero Section */}
+      {/* Clean, Professional Hero Section */}
       <Box
         sx={{
-          position: 'relative',
-          background: 'linear-gradient(-45deg, #4f46e5, #7c3aed, #ec4899, #3b82f6)',
-          backgroundSize: '400% 400%',
-          animation: 'gradientBG 15s ease infinite',
-          color: 'white',
-          py: { xs: 10, md: 16 },
+          background: "linear-gradient(to bottom, #ffffff, #f8fafc)",
+          pt: { xs: 8, md: 12 },
+          pb: { xs: 6, md: 8 },
           px: 3,
-          textAlign: 'center',
-          overflow: 'hidden',
-          '@keyframes gradientBG': {
-            '0%': { backgroundPosition: '0% 50%' },
-            '50%': { backgroundPosition: '100% 50%' },
-            '100%': { backgroundPosition: '0% 50%' },
-          },
+          textAlign: "center",
+          borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
         }}
       >
-        {/* Animated Floating Orb 1 */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: "-20%",
-            left: "-10%",
-            width: "50%",
-            height: "150%",
-            background: "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%)",
-            transform: "rotate(30deg)",
-            animation: "float 8s ease-in-out infinite",
-            '@keyframes float': {
-              '0%': { transform: 'rotate(30deg) translateY(0px)' },
-              '50%': { transform: 'rotate(30deg) translateY(-30px)' },
-              '100%': { transform: 'rotate(30deg) translateY(0px)' },
-            }
-          }}
-        />
-        {/* Animated Floating Orb 2 */}
-        <Box
-          sx={{
-            position: "absolute",
-            bottom: "-30%",
-            right: "-10%",
-            width: "40%",
-            height: "120%",
-            background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)",
-            transform: "rotate(-15deg)",
-            animation: "floatAlt 10s ease-in-out infinite",
-            '@keyframes floatAlt': {
-              '0%': { transform: 'rotate(-15deg) translateY(0px)' },
-              '50%': { transform: 'rotate(-15deg) translateY(40px)' },
-              '100%': { transform: 'rotate(-15deg) translateY(0px)' },
-            }
-          }}
-        />
-        
-        <Container maxWidth="md" sx={{ position: "relative", zIndex: 1 }}>
-          <Box
-            sx={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: 6,
-              p: { xs: 4, md: 6 },
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-              transition: 'transform 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-5px)',
-              }
+        <Container maxWidth="md">
+          <Typography
+            variant="h2"
+            component="h1"
+            sx={{ 
+              fontWeight: 800, 
+              mb: 2, 
+              color: "#0f172a",
+              letterSpacing: "-0.02em", 
+              fontSize: { xs: "2.5rem", md: "3.5rem" },
             }}
           >
-            <Typography
-              variant="h2"
-              component="h1"
-              sx={{ 
-                fontWeight: 800, 
-                mb: 2, 
-                letterSpacing: "-0.03em", 
-                fontSize: { xs: "2.5rem", md: "4.5rem" },
-                textShadow: "0 2px 10px rgba(0,0,0,0.2)"
-              }}
-            >
-              Voting Gallery
-            </Typography>
-            <Typography variant="h6" sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 400, maxWidth: 600, mx: "auto", lineHeight: 1.6 }}>
-              Explore amazing semifinal entries and cast your vote for the best innovations that shape our future.
-            </Typography>
-          </Box>
+            Voting <Box component="span" sx={{ color: "#6366f1" }}>Gallery</Box>
+          </Typography>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              color: "#64748b",
+              fontWeight: 400, 
+              maxWidth: 600, 
+              mx: "auto", 
+              lineHeight: 1.6 
+            }}
+          >
+            Explore amazing semifinal entries and cast your vote for the best innovations that shape our future.
+          </Typography>
         </Container>
       </Box>
 

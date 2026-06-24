@@ -1,4 +1,5 @@
 "use client";
+import { EntryItem, FormField, LooseObject } from "../../types";
 
 import {
   Box,
@@ -45,9 +46,9 @@ export default function EntryDetails() {
   const contestId = searchParams.get("contestId") || CONTEST_ID;
   const { showSnackbar } = useSnackbar();
   
-  const [entry, setEntry] = useState<any>(null);
-  const [templateFields, setTemplateFields] = useState<any[]>([]);
-  const [userFields, setUserFields] = useState<any[]>([]);
+  const [entry, setEntry] = useState<EntryItem | null>(null);
+  const [templateFields, setTemplateFields] = useState<FormField[]>([]);
+  const [userFields, setUserFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [voteCount, setVoteCount] = useState(0);
@@ -76,8 +77,8 @@ export default function EntryDetails() {
 
         const contestData = entryData?.contest;
 
-        let tFields: any[] = [];
-        let uFields: any[] = [];
+        let tFields: FormField[] = [];
+        let uFields: FormField[] = [];
         if (contestData?.entryLevelTemplate?.schema?.fields) {
           tFields = contestData.entryLevelTemplate.schema.fields;
         } else if (contestData?.entry_level_template?.schema?.fields) {
@@ -119,12 +120,13 @@ export default function EntryDetails() {
       setVoted(true);
       localStorage.setItem(`voted_${id}`, "true");
       showSnackbar(res?.message || "Your vote has been recorded successfully!", "success");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to vote", error);
-      const errMsg = error.response?.data?.message || error.message || "Failed to submit vote.";
+      const err = error as { response?: { status?: number, data?: { message?: string } }, message?: string };
+      const errMsg = err.response?.data?.message || err.message || "Failed to submit vote.";
       showSnackbar(errMsg, "error");
       
-      if (error.response?.status === 409 || errMsg.toLowerCase().includes("already voted")) {
+      if (err.response?.status === 409 || errMsg.toLowerCase().includes("already voted")) {
         setVoted(true);
         localStorage.setItem(`voted_${id}`, "true");
       }
@@ -142,11 +144,11 @@ export default function EntryDetails() {
     handleVote(comment.trim());
   };
 
-  const getImageUrl = (dataObj: any) => {
+  const getImageUrl = (dataObj: Record<string, string> | undefined) => {
     if (!dataObj) return "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80";
     
-    const imageField = templateFields.find((f: any) => f.label?.toLowerCase().includes("thumbnail")) 
-                    || templateFields.find((f: any) => f.type === "image" || f.type === "file_upload" || f.label?.toLowerCase().includes("image") || f.label?.toLowerCase().includes("photo"));
+    const imageField = templateFields.find((f: FormField) => f.label?.toLowerCase().includes("thumbnail")) 
+                    || templateFields.find((f: FormField) => f.type === "image" || f.type === "file_upload" || f.label?.toLowerCase().includes("image") || f.label?.toLowerCase().includes("photo"));
     if (imageField && dataObj[`${imageField.id}_downloadUrl`]) {
       return dataObj[`${imageField.id}_downloadUrl`];
     } else if (imageField && dataObj[imageField.id] && typeof dataObj[imageField.id] === 'string' && dataObj[imageField.id].includes("http")) {
@@ -161,11 +163,11 @@ export default function EntryDetails() {
     return "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80";
   };
 
-  const getTitle = (entryObj: any) => {
+  const getTitle = (entryObj: EntryItem) => {
     const subData = entryObj?.submission?.data || {};
     let title = "";
 
-    const entryTitleField = templateFields?.find((f: any) => {
+    const entryTitleField = templateFields?.find((f: FormField) => {
       const l = f.label?.toLowerCase() || "";
       return l.includes("title") || l.includes("project") || l.includes("name");
     });
@@ -180,38 +182,38 @@ export default function EntryDetails() {
     return title;
   };
 
-  const getAuthor = (entryObj: any) => {
-    const firstNameField = userFields.find((f: any) => {
+  const getAuthor = (entryObj: EntryItem) => {
+    const firstNameField = userFields.find((f: FormField) => {
       const l = f.label?.toLowerCase().replace(/\s+/g, '') || "";
       return l.includes("firstname") || l === "first";
     });
-    const lastNameField = userFields.find((f: any) => {
+    const lastNameField = userFields.find((f: FormField) => {
       const l = f.label?.toLowerCase().replace(/\s+/g, '') || "";
       return l.includes("lastname") || l === "last";
     });
-    const fullNameField = userFields.find((f: any) => {
+    const fullNameField = userFields.find((f: FormField) => {
       const l = f.label?.toLowerCase().replace(/\s+/g, '') || "";
       return l.includes("fullname") || l === "name" || (l.includes("name") && !l.includes("first") && !l.includes("last"));
     });
 
-    const rawAuthorData = entryObj?.participant?.submission?.data;
-    const authorData = rawAuthorData?.data || rawAuthorData || (entryObj?.participant as any)?.data || (entryObj?.participant as any)?.participant_profile_data || {};
+    const rawAuthorData = (entryObj?.participant?.submission?.data || entryObj?.participant?.user || entryObj?.user || entryObj?.author || entryObj?.participant || {}) as LooseObject;
+    const authorData = (rawAuthorData?.data || rawAuthorData || (entryObj?.participant as LooseObject)?.data || (entryObj?.participant as LooseObject)?.participant_profile_data || {}) as Record<string, string>;
     let authorName = "";
 
     if (firstNameField || lastNameField) {
-      const first = firstNameField ? (authorData[firstNameField.label] || authorData[firstNameField.id]) : "";
-      const last = lastNameField ? (authorData[lastNameField.label] || authorData[lastNameField.id]) : "";
+      const first = firstNameField ? (authorData[firstNameField.label as string] || authorData[firstNameField.id]) : "";
+      const last = lastNameField ? (authorData[lastNameField.label as string] || authorData[lastNameField.id]) : "";
       authorName = `${first || ""} ${last || ""}`.trim();
     }
     
     if (!authorName && fullNameField) {
-      authorName = authorData[fullNameField.label] || authorData[fullNameField.id];
+      authorName = authorData[fullNameField.label as string] || authorData[fullNameField.id];
     }
 
     if (!authorName) {
-      const fallback = userFields.find((f: any) => f.label?.toLowerCase().includes("name"));
-      if (fallback && (authorData[fallback.label] || authorData[fallback.id])) {
-        authorName = authorData[fallback.label] || authorData[fallback.id];
+      const fallback = userFields.find((f: FormField) => f.label?.toLowerCase().includes("name"));
+      if (fallback && (authorData[fallback.label as string] || authorData[fallback.id])) {
+        authorName = authorData[fallback.label as string] || authorData[fallback.id];
       } else {
         authorName = authorData.yg9snrxlh || authorData["fullName"] || authorData["name"];
       }
@@ -220,7 +222,7 @@ export default function EntryDetails() {
     return authorName || "Anonymous";
   };
 
-  const getFieldIcon = (type: string, label: string) => {
+  const getFieldIcon = (type: string | undefined, label: string) => {
     const lowercaseLabel = label.toLowerCase();
     if (lowercaseLabel.includes("phone") || lowercaseLabel.includes("mobile") || type === "telInput")
       return <Phone sx={{ fontSize: 20 }} />;
@@ -242,7 +244,7 @@ export default function EntryDetails() {
     return <Info sx={{ fontSize: 20 }} />;
   };
 
-  const renderFieldValue = (field: any) => {
+  const renderFieldValue = (field: FormField) => {
     const { type, value } = field;
 
     if (value === undefined || value === null || value === "") {
@@ -258,7 +260,7 @@ export default function EntryDetails() {
         <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
           <Rating value={Number(value)} readOnly precision={0.5} size="small" />
           <Typography variant="caption" sx={{ ml: 1, fontWeight: 600, color: "text.secondary" }}>
-            ({value})
+            ({String(value)})
           </Typography>
         </Box>
       );
@@ -286,7 +288,7 @@ export default function EntryDetails() {
       try {
         return (
           <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary", mt: 0.5 }}>
-            {new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+            {new Date(value as string | number).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
           </Typography>
         );
       } catch (e) {
@@ -296,7 +298,7 @@ export default function EntryDetails() {
 
     if (type === "file_upload" || type === "file" || type === "image") {
       if (!value) return null;
-      const urlStr = typeof value === 'string' ? value : (value.downloadUrl || String(value));
+      const urlStr = typeof value === 'string' ? value : ((value as Record<string, string>).downloadUrl || String(value));
       const isImage = typeof urlStr === 'string' && urlStr.match(/\.(jpeg|jpg|gif|png|webp)/i);
       
       const handleDownload = async (e: React.MouseEvent) => {
@@ -338,9 +340,9 @@ export default function EntryDetails() {
     if (!entry?.submission?.data) return [];
 
     const submissionData = entry.submission.data;
-    const groups: { title: string; fields: { id: string; label: string; value: any; type: string }[] }[] = [];
+    const groups: { title: string; fields: { id: string; label: string; value: unknown; type: string }[] }[] = [];
 
-    let currentGroup = { title: "Information", fields: [] as { id: string; label: string; value: any; type: string }[] };
+    let currentGroup = { title: "Information", fields: [] as { id: string; label: string; value: unknown; type: string }[] };
     const mappedFieldIds = new Set<string>();
 
     const isFirstOrLast = (label: string) => {
@@ -359,7 +361,7 @@ export default function EntryDetails() {
       });
     }
 
-    templateFields?.forEach((field: any) => {
+    templateFields?.forEach((field: FormField) => {
       if (field.type === "step_break") {
         if (currentGroup.fields.length > 0 || currentGroup.title !== "Information") {
           groups.push(currentGroup);
@@ -381,7 +383,7 @@ export default function EntryDetails() {
           id: field.id,
           label: field.label,
           value: value !== undefined ? value : "",
-          type: field.type,
+          type: field.type || "",
         });
         mappedFieldIds.add(field.id);
       }
@@ -392,7 +394,7 @@ export default function EntryDetails() {
     }
 
     const mappedFieldKeys = new Set<string>();
-    templateFields?.forEach((f: any) => {
+    templateFields?.forEach((f: FormField) => {
       mappedFieldKeys.add(f.id);
       mappedFieldKeys.add(f.label);
       if (f.label) mappedFieldKeys.add(f.label.trim());
@@ -478,7 +480,7 @@ export default function EntryDetails() {
                   </Box>
 
                   <Box sx={{ display: "flex", flexDirection: "column", bgcolor: "background.paper", borderRadius: 3, border: `1px solid #e2e8f0`, p: 1 }}>
-                    {group.fields.map((field: any, idx: number) => (
+                    {group.fields.map((field: FormField, idx: number) => (
                       <Box
                         key={field.id}
                         sx={{
