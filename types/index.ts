@@ -10,6 +10,7 @@ export interface EntryItem {
   contest_id?: string;
   contest?: {
     id: string;
+    name?: string;
     entryLevelTemplate?: { schema?: { fields?: FormField[] } };
     entry_level_template?: { schema?: { fields?: FormField[] } };
     userLevelTemplate?: { schema?: { fields?: FormField[] } };

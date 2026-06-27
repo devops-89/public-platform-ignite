@@ -1,56 +1,65 @@
 "use client";
 
-import { useSnackbar } from "@/context/SnackbarContext";
 import { useAppTheme } from "@/context/ThemeContext";
+import { PublicAuthControllers } from "@/api/publicAuthControllers";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import {
+  Alert,
   Box,
   Button,
+  Collapse,
   Container,
   IconButton,
   InputAdornment,
+  Link,
   Paper,
   TextField,
   Typography,
 } from "@mui/material";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import React, { useState } from "react";
 import * as Yup from "yup";
-import { PublicAuthControllers } from "../../api/publicAuthControllers";
+import { useSnackbar } from "@/context/SnackbarContext";
 
-const validationSchema = Yup.object({
-  fullName: Yup.string().required("Full Name is required"),
-  email: Yup.string().email("Enter a valid email").required("Email is required"),
-  password: Yup.string().min(8, "Password should be of minimum 8 characters length").required("Password is required"),
-});
-
-export default function Signup() {
+const Login = () => {
   const { colors } = useAppTheme();
   const router = useRouter();
-  const { showSnackbar } = useSnackbar();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const { showSnackbar } = useSnackbar();
 
   const formik = useFormik({
     initialValues: {
-      fullName: "",
       email: "",
       password: "",
     },
-    validationSchema: validationSchema,
+    validationSchema: Yup.object({
+      email: Yup.string().email("Invalid email").required("Email is required"),
+      password: Yup.string().required("Password is required"),
+    }),
     onSubmit: async (values) => {
+      setIsLoading(true);
+      setApiError(null);
       try {
-        const response = await PublicAuthControllers.createPublicUser(values);
-        
-        if (response.status === 201 || response.data?.message) {
-          showSnackbar("You registered successfully. Please verify OTP.", "success");
-          // Redirect to verify-otp page with email in query params
-          setTimeout(() => {
-          router.push(`/verify-otp?email=${encodeURIComponent(values.email)}`);
-          }, 1500);
+        const result = await PublicAuthControllers.login(values);
+        const token = result.data.data.accessToken;
+        const user = result.data.data.user;
+
+        localStorage.setItem("publicUser", JSON.stringify(user));
+        localStorage.setItem("publicAccessToken", token);
+        showSnackbar("Login successful!", "success");
+        router.push("/gallery");
+      } catch (err: any) {
+        console.error("Login failed:", err);
+        let errorMessage = err?.response?.data?.message || err.message || "Something went wrong";
+        if (errorMessage.toLowerCase().includes("validation error")) {
+          errorMessage = "Invalid email or password";
         }
-      } catch (error: unknown) {
-        showSnackbar((error as { response?: { data?: { message?: string } } }).response?.data?.message || "An error occurred during signup.", "error");
+        setApiError(errorMessage);
+      } finally {
+        setIsLoading(false);
       }
     },
   });
@@ -73,11 +82,12 @@ export default function Signup() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        background: `linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)`,
         padding: 2,
-        bgcolor: "background.default",
+        transition: "background 0.3s ease",
       }}
     >
-      <Container component="main" maxWidth="sm">
+      <Container maxWidth="sm">
         <form onSubmit={formik.handleSubmit}>
           <Paper
             elevation={0}
@@ -101,65 +111,52 @@ export default function Signup() {
                   letterSpacing: "-0.025em",
                 }}
               >
-                Create an Account
+                Welcome Back
               </Typography>
               <Typography variant="body1" sx={{ color: colors.TEXT_SECONDARY }}>
-                Register to participate in public voting
+                Enter your credentials to access your account
               </Typography>
             </Box>
 
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Collapse in={Boolean(apiError)}>
+              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                {apiError}
+              </Alert>
+            </Collapse>
+
+            <Box sx={{ mt: 1 }}>
               <TextField
                 margin="normal"
-                required
-                fullWidth
-                id="fullName"
-                label="Full Name"
-                name="fullName"
-                autoComplete="name"
-                autoFocus
-                sx={textFieldStyles}
-                value={formik.values.fullName}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.fullName && Boolean(formik.errors.fullName)}
-                helperText={formik.touched.fullName && formik.errors.fullName as string}
-              />
-              <TextField
-                margin="normal"
-                required
                 fullWidth
                 id="email"
                 label="Email Address"
                 name="email"
-                autoComplete="email"
+                variant="outlined"
                 sx={textFieldStyles}
                 value={formik.values.email}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 error={formik.touched.email && Boolean(formik.errors.email)}
-                helperText={formik.touched.email && formik.errors.email as string}
+                helperText={formik.touched.email && formik.errors.email}
+                autoComplete="new-password"
+                slotProps={{ inputLabel: { shrink: true } }}
+                placeholder="Enter your email"
               />
               <TextField
                 margin="normal"
-                required
                 fullWidth
                 name="password"
                 label="Password"
                 type={showPassword ? "text" : "password"}
                 id="password"
-                autoComplete="current-password"
                 sx={textFieldStyles}
-                value={formik.values.password}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.password && Boolean(formik.errors.password)}
-                helperText={formik.touched.password && formik.errors.password as string}
+                autoComplete="new-password"
                 slotProps={{
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
+                          aria-label="toggle password visibility"
                           onClick={() => setShowPassword(!showPassword)}
                           edge="end"
                           sx={{ color: colors.TEXT_SECONDARY }}
@@ -169,18 +166,46 @@ export default function Signup() {
                       </InputAdornment>
                     ),
                   },
+                  inputLabel: { shrink: true },
                 }}
+                value={formik.values.password}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={formik.touched.password && Boolean(formik.errors.password)}
+                helperText={formik.touched.password && formik.errors.password}
+                placeholder="Enter your password"
               />
 
-
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mt: 1,
+                  mb: 2,
+                }}
+              >
+                <Link
+                  href="/forgot-password"
+                  variant="body2"
+                  sx={{
+                    color: colors.PRIMARY,
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    "&:hover": { textDecoration: "underline" },
+                  }}
+                >
+                  Forgot password?
+                </Link>
+              </Box>
 
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
-                disabled={formik.isSubmitting}
+                disabled={isLoading}
                 sx={{
-                  mt: 2,
+                  mt: 3,
                   mb: 2,
                   py: 1.5,
                   bgcolor: colors.PRIMARY,
@@ -203,12 +228,12 @@ export default function Signup() {
                   },
                 }}
               >
-                {formik.isSubmitting ? "Creating Account..." : "Sign Up"}
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
 
               <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
                 <Typography variant="body2" sx={{ color: colors.TEXT_SECONDARY }}>
-                  Already have an account?{" "}
+                  Don't have an account?{" "}
                   <Typography
                     component="span"
                     variant="body2"
@@ -218,9 +243,9 @@ export default function Signup() {
                       cursor: "pointer",
                       "&:hover": { textDecoration: "underline" },
                     }}
-                    onClick={() => router.push("/login")}
+                    onClick={() => router.push("/")}
                   >
-                    Sign in
+                    Sign up
                   </Typography>
                 </Typography>
               </Box>
@@ -230,4 +255,6 @@ export default function Signup() {
       </Container>
     </Box>
   );
-}
+};
+
+export default Login;

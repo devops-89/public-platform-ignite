@@ -5,6 +5,10 @@ export const userPublicApi = axios.create({
   baseURL: SERVER_ENDPOINTS.USER_BASEURL,
 });
 
+export const authPublicApi = axios.create({
+  baseURL: SERVER_ENDPOINTS.AUTH_BASEURL,
+});
+
 export const userSecuredApi = axios.create({
   baseURL: SERVER_ENDPOINTS.USER_BASEURL,
 });

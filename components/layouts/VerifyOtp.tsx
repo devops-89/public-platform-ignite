@@ -19,6 +19,7 @@ export default function VerifyOtp() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
+  const flow = searchParams.get("flow");
   const { showSnackbar } = useSnackbar();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -69,6 +70,11 @@ export default function VerifyOtp() {
     
     if (otpValue.length !== 6) {
       showSnackbar("Please enter all 6 digits of the OTP.", "error");
+      return;
+    }
+
+    if (flow === "forgot") {
+      router.push(`/reset-password?email=${encodeURIComponent(email || "")}&otp=${encodeURIComponent(otpValue)}`);
       return;
     }
 

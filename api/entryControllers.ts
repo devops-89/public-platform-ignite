@@ -1,12 +1,13 @@
 import { contestSecuredApi, userSecuredApi } from "./config";
 
 export const entryControllers = {
-  getAllEntries: async () => {
+  getAllEntries: async (searchQuery?: string, page: number = 1, limit: number = 9) => {
     try {
-      // the user explicitly asked to use the endpoint with status=semifinal on local_user_url
-      const response = await userSecuredApi.get(
-        `/entries?status=semifinal`
-      );
+      let url = `/entries?status=semifinal&page=${page}&limit=${limit}`;
+      if (searchQuery) {
+        url += `&search=${encodeURIComponent(searchQuery)}`;
+      }
+      const response = await userSecuredApi.get(url);
       return response.data;
     } catch (error) {
       throw error;

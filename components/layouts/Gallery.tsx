@@ -9,8 +9,12 @@ import {
     CircularProgress,
     Container,
     Grid,
-    Typography
+    Typography,
+    TextField,
+    InputAdornment,
+    Pagination
 } from "@mui/material";
+import SearchIcon from '@mui/icons-material/Search';
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { entryControllers } from "../../api/entryControllers";
@@ -24,23 +28,30 @@ export default function Gallery() {
 
   const CONTEST_ID = "ae1fb2a4-4da5-44ed-ae85-7fb0659a1ab6";
 
-  useEffect(() => {
-    const fetchEntriesAndFields = async () => {
-      try {
-        setLoading(true);
-        const entriesRes = await entryControllers.getAllEntries();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchEntriesAndFields = async (search?: string, currentPage: number = 1) => {
+    try {
+      setLoading(true);
+      const entriesRes = await entryControllers.getAllEntries(search, currentPage);
         
         let docs = [];
         if (entriesRes?.data?.docs) {
           docs = entriesRes.data.docs;
+          setTotalPages(entriesRes.data.totalPages || 1);
         } else if (entriesRes?.docs) {
           docs = entriesRes.docs;
+          setTotalPages(entriesRes.totalPages || 1);
         }
         
-        // Filter entries locally by the contest ID
-        docs = docs.filter(
-          (e: EntryItem) => e.contest_id === CONTEST_ID || e.contest?.id === CONTEST_ID
-        );
+        // Filter entries locally by the contest ID only if there is no search query
+        if (!search) {
+          docs = docs.filter(
+            (e: EntryItem) => e.contest_id === CONTEST_ID || e.contest?.id === CONTEST_ID
+          );
+        }
         
         setEntries(docs);
 
@@ -69,9 +80,24 @@ export default function Gallery() {
       } finally {
         setLoading(false);
       }
-    };
-    fetchEntriesAndFields();
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchEntriesAndFields(searchQuery, page);
+  }, [page]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (page !== 1) {
+      setPage(1); // Setting page to 1 will trigger useEffect
+    } else {
+      fetchEntriesAndFields(searchQuery, 1);
+    }
+  };
+
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
 
   const getImageUrl = (dataObj: Record<string, string> | undefined) => {
     if (!dataObj) return "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80";
@@ -187,11 +213,39 @@ export default function Gallery() {
               fontWeight: 400, 
               maxWidth: 600, 
               mx: "auto", 
-              lineHeight: 1.6 
+              lineHeight: 1.6,
+              mb: 4
             }}
           >
             Explore amazing semifinal entries and cast your vote for the best innovations that shape our future.
           </Typography>
+
+          <form onSubmit={handleSearch}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search by Contest Name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{
+                bgcolor: 'white',
+                borderRadius: 2,
+                boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                }
+              }}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
+                }
+              }}
+            />
+          </form>
         </Container>
       </Box>
 
@@ -270,24 +324,41 @@ export default function Gallery() {
                        justifyContent: "flex-end",
                      }}
                    >
-                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, mb: 1.5 }}>
-                       <Typography
-                         variant="h5"
-                         component="h2"
-                         sx={{
-                           fontWeight: 700,
-                           color: "#ffffff",
-                           lineHeight: 1.3,
-                           display: "-webkit-box",
-                           WebkitLineClamp: 2,
-                           WebkitBoxOrient: "vertical",
-                           overflow: "hidden",
-                           textShadow: "0 2px 4px rgba(0,0,0,0.5)"
-                         }}
-                       >
-                         {title}
-                       </Typography>
-                     </Box>
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, mb: 1.5 }}>
+                        <Typography
+                          variant="h5"
+                          component="h2"
+                          sx={{
+                            fontWeight: 700,
+                            color: "#ffffff",
+                            lineHeight: 1.3,
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            textShadow: "0 2px 4px rgba(0,0,0,0.5)"
+                          }}
+                        >
+                          {title}
+                        </Typography>
+                        
+                        {entry.contest?.name && (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "rgba(255,255,255,0.85)",
+                              fontWeight: 500,
+                              textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                          >
+                            Contest: {entry.contest.name}
+                          </Typography>
+                        )}
+                      </Box>
                      
                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                        <Chip
@@ -329,6 +400,55 @@ export default function Gallery() {
              );
           })}
         </Grid>
+      )}
+
+      {!loading && entries.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10, mb: 4 }}>
+          <Pagination
+            count={totalPages || 1}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            size="large"
+            shape="rounded"
+            sx={{
+              p: 1.5,
+              bgcolor: 'white',
+              borderRadius: 4,
+              boxShadow: "0 10px 40px -10px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0, 0, 0, 0.05)",
+              '& .MuiPaginationItem-root': {
+                fontWeight: 700,
+                fontSize: "1.05rem",
+                color: "#64748b",
+                borderRadius: 2.5,
+                mx: 0.5,
+                transition: "all 0.3s ease",
+                '&:hover': {
+                  bgcolor: "rgba(99, 102, 241, 0.1)",
+                  color: "#6366f1",
+                  transform: "translateY(-2px)",
+                },
+                '&.Mui-selected': {
+                  background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                  color: "white",
+                  boxShadow: "0 6px 15px rgba(99, 102, 241, 0.4)",
+                  border: "none",
+                  '&:hover': {
+                    background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+                  }
+                },
+                '&.MuiPaginationItem-ellipsis': {
+                  bgcolor: 'transparent',
+                  transform: 'none',
+                  '&:hover': {
+                    bgcolor: 'transparent',
+                  }
+                }
+              }
+            }}
+          />
+        </Box>
       )}
       </Container>
     </Box>

@@ -17,6 +17,7 @@ const LayoutWrapper = ({ children }: LayoutWrapperProps) => {
   const hideLayoutPaths = [
     "/",
     "/signup",
+    "/login",
     "/forgot-password",
     "/reset-password",
     "/verify-otp",
