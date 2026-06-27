@@ -20,8 +20,12 @@ import * as Yup from "yup";
 import { PublicAuthControllers } from "../../api/publicAuthControllers";
 
 const validationSchema = Yup.object({
-  fullName: Yup.string().required("Full Name is required"),
-  email: Yup.string().email("Enter a valid email").required("Email is required"),
+  fullName: Yup.string()
+    .matches(/^[A-Za-z\s]+$/, "Full Name can only contain letters and spaces")
+    .required("Full Name is required"),
+  email: Yup.string()
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "Enter a valid email")
+    .required("Email is required"),
   password: Yup.string().min(8, "Password should be of minimum 8 characters length").required("Password is required"),
 });
 
@@ -124,6 +128,8 @@ export default function Signup() {
                 onBlur={formik.handleBlur}
                 error={formik.touched.fullName && Boolean(formik.errors.fullName)}
                 helperText={formik.touched.fullName && formik.errors.fullName as string}
+                placeholder="Enter your full name"
+                slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
                 margin="normal"
@@ -139,6 +145,8 @@ export default function Signup() {
                 onBlur={formik.handleBlur}
                 error={formik.touched.email && Boolean(formik.errors.email)}
                 helperText={formik.touched.email && formik.errors.email as string}
+                placeholder="Enter your email"
+                slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
                 margin="normal"
@@ -148,13 +156,14 @@ export default function Signup() {
                 label="Password"
                 type={showPassword ? "text" : "password"}
                 id="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 sx={textFieldStyles}
                 value={formik.values.password}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 error={formik.touched.password && Boolean(formik.errors.password)}
                 helperText={formik.touched.password && formik.errors.password as string}
+                placeholder="Enter your password"
                 slotProps={{
                   input: {
                     endAdornment: (
@@ -169,6 +178,7 @@ export default function Signup() {
                       </InputAdornment>
                     ),
                   },
+                  inputLabel: { shrink: true },
                 }}
               />
 

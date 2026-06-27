@@ -41,4 +41,12 @@ export const PublicAuthControllers = {
       throw error;
     }
   },
+  resendPublicOtp: async (data: Record<string, unknown>) => {
+    try {
+      const result = await userPublicApi.post("resend-public-otp", data);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  },
 };

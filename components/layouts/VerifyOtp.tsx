@@ -25,6 +25,43 @@ export default function VerifyOtp() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [cooldown, setCooldown] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (cooldown > 0 && !canResend) {
+      timer = setInterval(() => {
+        setCooldown((prev) => prev - 1);
+      }, 1000);
+    } else if (cooldown === 0) {
+      setCanResend(true);
+    }
+    return () => clearInterval(timer);
+  }, [cooldown, canResend]);
+
+  const handleResendOtp = async () => {
+    if (!email) return;
+    try {
+      setIsLoading(true);
+      if (flow === "forgot") {
+        await PublicAuthControllers.forgotPassword({ email });
+      } else {
+        await PublicAuthControllers.resendPublicOtp({ email });
+      }
+      showSnackbar("Verification code resent successfully.", "success");
+      setCooldown(60);
+      setCanResend(false);
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } catch (err: unknown) {
+      console.error(err);
+      const error = err as { response?: { data?: { message?: string } }, message?: string };
+      showSnackbar(error?.response?.data?.message || error?.message || "Failed to resend OTP.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Focus the first input on mount
   useEffect(() => {
@@ -220,17 +257,25 @@ export default function VerifyOtp() {
               {isLoading ? "Verifying..." : "Verify OTP"}
             </Button>
             
-            <Box sx={{ mt: 3 }}>
+            <Box sx={{ mt: 3, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ color: colors.TEXT_SECONDARY }}>
                 Didn&apos;t receive the code?{" "}
                 <Button
                   variant="text"
                   sx={{ textTransform: "none", p: 0, minWidth: "auto", fontWeight: 600, color: colors.PRIMARY }}
-                  onClick={() => router.push("/")}
+                  onClick={handleResendOtp}
+                  disabled={!canResend || isLoading}
                 >
-                  Go Back
+                  {canResend ? "Resend Verification Code" : `Resend in ${cooldown}s`}
                 </Button>
               </Typography>
+              <Button
+                variant="text"
+                sx={{ textTransform: "none", p: 0, minWidth: "auto", fontWeight: 600, color: colors.TEXT_SECONDARY }}
+                onClick={() => router.push("/")}
+              >
+                Go Back
+              </Button>
             </Box>
           </Paper>
         </form>

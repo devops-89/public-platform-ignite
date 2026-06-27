@@ -27,7 +27,6 @@ const Login = () => {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
   const { showSnackbar } = useSnackbar();
 
   const formik = useFormik({
@@ -41,7 +40,6 @@ const Login = () => {
     }),
     onSubmit: async (values) => {
       setIsLoading(true);
-      setApiError(null);
       try {
         const result = await PublicAuthControllers.login(values);
         const token = result.data.data.accessToken;
@@ -57,7 +55,7 @@ const Login = () => {
         if (errorMessage.toLowerCase().includes("validation error")) {
           errorMessage = "Invalid email or password";
         }
-        setApiError(errorMessage);
+        showSnackbar(errorMessage, "error");
       } finally {
         setIsLoading(false);
       }
@@ -117,12 +115,6 @@ const Login = () => {
                 Enter your credentials to access your account
               </Typography>
             </Box>
-
-            <Collapse in={Boolean(apiError)}>
-              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-                {apiError}
-              </Alert>
-            </Collapse>
 
             <Box sx={{ mt: 1 }}>
               <TextField
