@@ -1,17 +1,24 @@
 "use client";
 
-import { useSnackbar } from "@/context/SnackbarContext";
-import { useAppTheme } from "@/context/ThemeContext";
+import React, { useEffect, useRef, useState } from "react";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import {
   Box,
   Button,
   Container,
+  IconButton,
+  InputAdornment,
   Paper,
   TextField,
   Typography,
 } from "@mui/material";
+
+import { useFormik } from "formik";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
+import * as Yup from "yup";
+
+import { useSnackbar } from "@/context/SnackbarContext";
+import { useAppTheme } from "@/context/ThemeContext";
 import { PublicAuthControllers } from "../../api/publicAuthControllers";
 
 export default function VerifyOtp() {
@@ -23,10 +30,13 @@ export default function VerifyOtp() {
   const { showSnackbar } = useSnackbar();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [cooldown, setCooldown] = useState(60);
+  const [cooldown, setCooldown] = useState(300);
   const [canResend, setCanResend] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -43,14 +53,14 @@ export default function VerifyOtp() {
   const handleResendOtp = async () => {
     if (!email) return;
     try {
-      setIsLoading(true);
+      setLoading(true);
       if (flow === "forgot") {
         await PublicAuthControllers.forgotPassword({ email });
       } else {
         await PublicAuthControllers.resendPublicOtp({ email });
       }
       showSnackbar("Verification code resent successfully.", "success");
-      setCooldown(60);
+      setCooldown(300);
       setCanResend(false);
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -59,8 +69,14 @@ export default function VerifyOtp() {
       const error = err as { response?: { data?: { message?: string } }, message?: string };
       showSnackbar(error?.response?.data?.message || error?.message || "Failed to resend OTP.", "error");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
+  };
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Focus the first input on mount
@@ -101,52 +117,106 @@ export default function VerifyOtp() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const otpValue = otp.join("");
-    
-    if (otpValue.length !== 6) {
-      showSnackbar("Please enter all 6 digits of the OTP.", "error");
-      return;
-    }
+  const formik = useFormik({
+    initialValues: {
+      password: "",
+      confirmPassword: "",
+    },
+    validationSchema: flow === "forgot" ? Yup.object({
+      password: Yup.string()
+        .min(8, "Password must be at least 8 characters")
+        .matches(/[A-Z]/, "Password must include at least one uppercase letter")
+        .matches(/[a-z]/, "Password must include at least one lowercase letter")
+        .matches(/[0-9]/, "Password must include at least one number")
+        .matches(
+          /[!@#$%^&*(),.?":{}|<>]/,
+          "Password must include at least one special character",
+        )
+        .required("Please Enter Password"),
+      confirmPassword: Yup.string()
+        .oneOf([Yup.ref("password")], "Passwords must match")
+        .required("Please Confirm Your Password"),
+    }) : Yup.object({}),
 
-    if (flow === "forgot") {
-      router.push(`/reset-password?email=${encodeURIComponent(email || "")}&otp=${encodeURIComponent(otpValue)}`);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      const payload = {
-        email: email || "",
-        otp: otpValue
-      };
-
-      const res = await PublicAuthControllers.verifyPublicOtp(payload);
-      showSnackbar("Your account has been activated successfully.", "success");
+    onSubmit: async (values) => {
+      const otpValue = otp.join("");
       
-      // Store token if returned
-      const token = res?.data?.data?.accessToken || res?.data?.accessToken || res?.data?.data?.token || res?.data?.token;
-      if (token) {
-        localStorage.setItem("accessToken", token);
-        localStorage.setItem("publicAccessToken", token);
+      if (otpValue.length !== 6) {
+        showSnackbar("Please enter all 6 digits of the OTP.", "error");
+        return;
       }
 
-      const userData = res?.data?.data?.user || res?.data?.user;
-      if (userData) {
-        localStorage.setItem("user", JSON.stringify(userData));
-        localStorage.setItem("publicUser", JSON.stringify(userData));
+      if (flow === "forgot") {
+        try {
+          setLoading(true);
+          const response = await PublicAuthControllers.resetPassword({
+            email: email || "",
+            otp: otpValue,
+            password: values.password,
+          });
+
+          showSnackbar(
+            response?.data?.message || "Password reset successfully!",
+            "success"
+          );
+
+          setTimeout(() => {
+            router.push("/login");
+          }, 1000);
+        } catch (err: unknown) {
+          console.error(err);
+          const error = err as { response?: { data?: { message?: string } }, message?: string };
+          showSnackbar(error?.response?.data?.message || error?.message || "Failed to reset password.", "error");
+        } finally {
+          setLoading(false);
+        }
+        return;
       }
-      
-      router.push("/gallery");
-    } catch (err: unknown) {
-      console.error(err);
-      const error = err as { response?: { data?: { message?: string } }, message?: string };
-      showSnackbar(error?.response?.data?.message || error?.message || "Invalid OTP. Please try again.", "error");
-    } finally {
-      setIsLoading(false);
-    }
+
+      try {
+        setLoading(true);
+
+        const payload = {
+          email: email || "",
+          otp: otpValue
+        };
+
+        const res = await PublicAuthControllers.verifyPublicOtp(payload);
+        showSnackbar("Your account has been activated successfully.", "success");
+        
+        // Store token if returned
+        const token = res?.data?.data?.accessToken || res?.data?.accessToken || res?.data?.data?.token || res?.data?.token;
+        if (token) {
+          localStorage.setItem("accessToken", token);
+          localStorage.setItem("publicAccessToken", token);
+        }
+
+        const userData = res?.data?.data?.user || res?.data?.user;
+        if (userData) {
+          localStorage.setItem("user", JSON.stringify(userData));
+          localStorage.setItem("publicUser", JSON.stringify(userData));
+        }
+        
+        router.push("/gallery");
+      } catch (err: unknown) {
+        console.error(err);
+        const error = err as { response?: { data?: { message?: string } }, message?: string };
+        showSnackbar(error?.response?.data?.message || error?.message || "Invalid OTP. Please try again.", "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
+
+  const textFieldStyles = {
+    "& .MuiOutlinedInput-root": {
+      color: colors.TEXT_PRIMARY,
+      "& fieldset": { borderColor: colors.BORDER },
+      "&:hover fieldset": { borderColor: colors.PRIMARY },
+      "&.Mui-focused fieldset": { borderColor: colors.PRIMARY },
+    },
+    "& .MuiInputLabel-root": { color: colors.TEXT_SECONDARY },
+    "& .MuiInputLabel-root.Mui-focused": { color: colors.PRIMARY },
   };
 
   return (
@@ -161,7 +231,7 @@ export default function VerifyOtp() {
       }}
     >
       <Container maxWidth="sm">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={formik.handleSubmit}>
           <Paper
             elevation={0}
             sx={{
@@ -185,7 +255,7 @@ export default function VerifyOtp() {
                 mb: 1
               }}
             >
-              Verify Your Email
+              {flow === "forgot" ? "Reset Password" : "Verify Your Email"}
             </Typography>
             <Typography variant="body1" sx={{ color: colors.TEXT_SECONDARY, mb: 4 }}>
               We sent a 6-digit verification code to<br />
@@ -227,13 +297,53 @@ export default function VerifyOtp() {
               ))}
             </Box>
 
+            {flow === "forgot" && (
+              <Box sx={{ mt: 4, textAlign: "left" }}>
+                <TextField
+                  fullWidth margin="normal" label="New Password" name="password" type={showPassword ? "text" : "password"} sx={textFieldStyles}
+                  value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur}
+                  error={formik.touched.password && Boolean(formik.errors.password)}
+                  helperText={formik.touched.password && formik.errors.password as string}
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => setShowPassword(!showPassword)}>
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <TextField
+                  fullWidth margin="normal" label="Confirm Password" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} sx={textFieldStyles}
+                  value={formik.values.confirmPassword} onChange={formik.handleChange} onBlur={formik.handleBlur}
+                  error={formik.touched.confirmPassword && Boolean(formik.errors.confirmPassword)}
+                  helperText={formik.touched.confirmPassword && formik.errors.confirmPassword as string}
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                            {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Box>
+            )}
+
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              disabled={isLoading || otp.join("").length !== 6 || !email}
+              disabled={loading || otp.join("").length !== 6 || !email}
               sx={{
                 py: 1.5,
+                mt: flow === "forgot" ? 4 : 0,
                 bgcolor: colors.PRIMARY,
                 color: "white",
                 fontWeight: 600,
@@ -254,7 +364,7 @@ export default function VerifyOtp() {
                 },
               }}
             >
-              {isLoading ? "Verifying..." : "Verify OTP"}
+              {loading ? (flow === "forgot" ? "Resetting..." : "Verifying...") : (flow === "forgot" ? "Reset Password" : "Verify OTP")}
             </Button>
             
             <Box sx={{ mt: 3, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
@@ -264,9 +374,9 @@ export default function VerifyOtp() {
                   variant="text"
                   sx={{ textTransform: "none", p: 0, minWidth: "auto", fontWeight: 600, color: colors.PRIMARY }}
                   onClick={handleResendOtp}
-                  disabled={!canResend || isLoading}
+                  disabled={!canResend || loading}
                 >
-                  {canResend ? "Resend Verification Code" : `Resend in ${cooldown}s`}
+                  {canResend ? "Resend Verification Code" : `Resend in ${formatTimer(cooldown)}`}
                 </Button>
               </Typography>
               <Button
