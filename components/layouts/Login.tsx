@@ -116,6 +116,10 @@ const Login = () => {
               </Typography>
             </Box>
 
+            {/* Dummy fields to intercept browser autofill */}
+            <input type="text" name="fakeusernameremembered" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }} tabIndex={-1} autoComplete="username" />
+            <input type="password" name="fakepasswordremembered" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }} tabIndex={-1} autoComplete="current-password" />
+
             <Box sx={{ mt: 1 }}>
               <TextField
                 margin="normal"
