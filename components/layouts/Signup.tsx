@@ -24,7 +24,7 @@ const validationSchema = Yup.object({
     .matches(/^[A-Za-z\s]+$/, "Full Name can only contain letters and spaces")
     .required("Full Name is required"),
   email: Yup.string()
-    .email("Enter a valid email")
+    .email("Please enter a valid email address.")
     .required("Email is required"),
   password: Yup.string().min(8, "Password should be of minimum 8 characters length").required("Password is required"),
 });

@@ -5,6 +5,7 @@ import { Avatar, Box, Button, Paper, Tooltip, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import LayoutProvider from "./Layout-Provider";
+import { PublicAuthControllers } from "@/api/publicAuthControllers";
 
 import { useSnackbar } from "@/context/SnackbarContext";
 
@@ -18,11 +19,22 @@ const Header = () => {
   const [userAvatar, setUserAvatar] = useState("");
   const { showSnackbar } = useSnackbar();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken") || "";
+      await PublicAuthControllers.logout({ refreshToken });
+    } catch (err) {
+      console.error("Logout API failed, continuing with local cleanup...", err);
+    }
+    
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
+    localStorage.removeItem("publicAccessToken");
+    localStorage.removeItem("publicUser");
+    localStorage.removeItem("publicRefreshToken");
     showSnackbar("Logged out successfully!", "success");
-    router.push("/");
+    router.push("/login");
   };
 
   useEffect(() => {

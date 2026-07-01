@@ -32,7 +32,7 @@ export default function VerifyOtp() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [cooldown, setCooldown] = useState(300);
+  const [cooldown, setCooldown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -54,13 +54,9 @@ export default function VerifyOtp() {
     if (!email) return;
     try {
       setLoading(true);
-      if (flow === "forgot") {
-        await PublicAuthControllers.forgotPassword({ email });
-      } else {
-        await PublicAuthControllers.resendPublicOtp({ email });
-      }
+      await PublicAuthControllers.resendOtp({ email });
       showSnackbar("Verification code resent successfully.", "success");
-      setCooldown(300);
+      setCooldown(60);
       setCanResend(false);
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -186,9 +182,13 @@ export default function VerifyOtp() {
         
         // Store token if returned
         const token = res?.data?.data?.accessToken || res?.data?.accessToken || res?.data?.data?.token || res?.data?.token;
+        const refreshToken = res?.data?.data?.refreshToken || res?.data?.refreshToken;
         if (token) {
           localStorage.setItem("accessToken", token);
           localStorage.setItem("publicAccessToken", token);
+        }
+        if (refreshToken) {
+          localStorage.setItem("refreshToken", refreshToken);
         }
 
         const userData = res?.data?.data?.user || res?.data?.user;
@@ -201,7 +201,11 @@ export default function VerifyOtp() {
       } catch (err: unknown) {
         console.error(err);
         const error = err as { response?: { data?: { message?: string } }, message?: string };
-        showSnackbar(error?.response?.data?.message || error?.message || "Invalid OTP. Please try again.", "error");
+        let errorMessage = error?.response?.data?.message || error?.message || "";
+        if (!errorMessage || errorMessage.toLowerCase().includes("invalid") || errorMessage.toLowerCase().includes("otp")) {
+            errorMessage = "Invalid OTP. Please enter the correct verification code.";
+        }
+        showSnackbar(errorMessage, "error");
       } finally {
         setLoading(false);
       }
@@ -299,8 +303,12 @@ export default function VerifyOtp() {
 
             {flow === "forgot" && (
               <Box sx={{ mt: 4, textAlign: "left" }}>
+                {/* Dummy fields to intercept browser autofill */}
+                <input type="text" name="fakeusernameremembered" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }} tabIndex={-1} autoComplete="username" />
+                <input type="password" name="fakepasswordremembered" style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }} tabIndex={-1} autoComplete="current-password" />
+
                 <TextField
-                  fullWidth margin="normal" label="New Password" name="password" type={showPassword ? "text" : "password"} sx={textFieldStyles}
+                  fullWidth margin="normal" label="New Password" name="password" type={showPassword ? "text" : "password"} sx={textFieldStyles} autoComplete="new-password"
                   value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur}
                   error={formik.touched.password && Boolean(formik.errors.password)}
                   helperText={formik.touched.password && formik.errors.password as string}
@@ -317,7 +325,7 @@ export default function VerifyOtp() {
                   }}
                 />
                 <TextField
-                  fullWidth margin="normal" label="Confirm Password" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} sx={textFieldStyles}
+                  fullWidth margin="normal" label="Confirm Password" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} sx={textFieldStyles} autoComplete="new-password"
                   value={formik.values.confirmPassword} onChange={formik.handleChange} onBlur={formik.handleBlur}
                   error={formik.touched.confirmPassword && Boolean(formik.errors.confirmPassword)}
                   helperText={formik.touched.confirmPassword && formik.errors.confirmPassword as string}

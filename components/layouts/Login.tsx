@@ -35,7 +35,7 @@ const Login = () => {
       password: "",
     },
     validationSchema: Yup.object({
-      email: Yup.string().email("Invalid email").required("Email is required"),
+      email: Yup.string().email("Please enter a valid email address.").required("Email is required"),
       password: Yup.string().required("Password is required"),
     }),
     onSubmit: async (values) => {
@@ -43,17 +43,26 @@ const Login = () => {
       try {
         const result = await PublicAuthControllers.login(values);
         const token = result.data.data.accessToken;
+        const refreshToken = result.data.data.refreshToken;
         const user = result.data.data.user;
 
         localStorage.setItem("publicUser", JSON.stringify(user));
         localStorage.setItem("publicAccessToken", token);
+        if (refreshToken) {
+          localStorage.setItem("refreshToken", refreshToken);
+        }
         showSnackbar("Login successful!", "success");
         router.push("/gallery");
       } catch (err: any) {
         console.error("Login failed:", err);
         let errorMessage = err?.response?.data?.message || err.message || "Something went wrong";
-        if (errorMessage.toLowerCase().includes("validation error")) {
-          errorMessage = "Invalid email or password";
+        const lowerMsg = errorMessage.toLowerCase();
+        if (lowerMsg.includes("password")) {
+          errorMessage = "Incorrect password. Please try again.";
+        } else if (lowerMsg.includes("email") || lowerMsg.includes("user") || lowerMsg.includes("not found")) {
+          errorMessage = "Incorrect email. Please try again.";
+        } else if (lowerMsg.includes("validation error") || lowerMsg.includes("invalid") || lowerMsg.includes("credential")) {
+          errorMessage = "Invalid email or password. Please try again.";
         }
         showSnackbar(errorMessage, "error");
       } finally {

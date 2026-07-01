@@ -13,6 +13,23 @@ export const userSecuredApi = axios.create({
   baseURL: SERVER_ENDPOINTS.USER_BASEURL,
 });
 
+export const authSecuredApi = axios.create({
+  baseURL: SERVER_ENDPOINTS.AUTH_BASEURL,
+});
+
+authSecuredApi.interceptors.request.use(
+  (config: InternalAxiosRequestConfig<unknown>) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("publicAccessToken") : null;
+    if (token && config.headers) {
+      config.headers.set("Authorization", `Bearer ${token}`);
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
 userSecuredApi.interceptors.request.use(
   (config: InternalAxiosRequestConfig<unknown>) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("publicAccessToken") : null;

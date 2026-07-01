@@ -1,4 +1,4 @@
-import { userPublicApi, authPublicApi } from "./config";
+import { userPublicApi, authPublicApi, authSecuredApi } from "./config";
 
 export const PublicAuthControllers = {
   createPublicUser: async (data: Record<string, unknown>) => {
@@ -25,6 +25,14 @@ export const PublicAuthControllers = {
       throw error;
     }
   },
+  logout: async (data: Record<string, unknown> = {}) => {
+    try {
+      let result = await authSecuredApi.post("logout", data);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  },
   forgotPassword: async (data: Record<string, unknown>) => {
     try {
       let result = await authPublicApi.post("forgot-password", data);
@@ -44,6 +52,14 @@ export const PublicAuthControllers = {
   resendPublicOtp: async (data: Record<string, unknown>) => {
     try {
       const result = await userPublicApi.post("resend-public-otp", data);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  },
+  resendOtp: async (data: Record<string, unknown>) => {
+    try {
+      const result = await authPublicApi.post("resend-otp", data);
       return result;
     } catch (error) {
       throw error;

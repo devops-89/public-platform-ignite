@@ -319,6 +319,23 @@ export default function EntryDetails() {
     return { videoField, innovationFields };
   }, [entry, templateFields]);
 
+  const isVotingEnded = useMemo(() => {
+    if (!entry?.contest) return false;
+    
+    let endDateStr = (entry.contest as any).public_voting_end_date || (entry.contest as any).publicVotingEndDate || (entry.contest as any).end_date;
+    
+    const votingPeriods = (entry.contest as any).votingPeriods || (entry as any).votingPeriods;
+    if (Array.isArray(votingPeriods)) {
+      const publicPeriod = votingPeriods.find((p: any) => p.voting_type === "PUBLIC");
+      if (publicPeriod && publicPeriod.end_date) {
+        endDateStr = publicPeriod.end_date;
+      }
+    }
+
+    if (!endDateStr) return false;
+    return new Date() > new Date(endDateStr);
+  }, [entry]);
+
   if (loading) {
     return (
       <Container sx={{ py: 6, textAlign: 'center' }}>
@@ -384,7 +401,7 @@ export default function EntryDetails() {
           <Divider sx={{ my: 3 }} />
           
           <Grid container spacing={4}>
-            <Grid size={{xs:12,md:8}}>
+            <Grid size={{xs:12,md: isVotingEnded ? 12 : 8}}>
               {/* Video Section */}
               {videoField && (
                 <Box sx={{ mb: 6 }}>
@@ -423,11 +440,12 @@ export default function EntryDetails() {
                 </Box>
               )}
             </Grid>
-            <Grid size={{xs:12,md:4}}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-                <Box sx={{ width: 4, height: 24, borderRadius: 1, bgcolor: "primary.main" }} />
-                <Typography variant="h6" sx={{ fontWeight: 800, color: "text.primary" }}>
-                  Action
+            {!isVotingEnded && (
+              <Grid size={{xs:12,md:4}}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+                  <Box sx={{ width: 4, height: 24, borderRadius: 1, bgcolor: "primary.main" }} />
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: "text.primary" }}>
+                    Action
                 </Typography>
               </Box>
               <Paper 
@@ -512,6 +530,7 @@ export default function EntryDetails() {
                 )}
               </Paper>
             </Grid>
+            )}
           </Grid>
         </Box>
       </Paper>

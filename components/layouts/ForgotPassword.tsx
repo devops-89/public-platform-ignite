@@ -20,7 +20,7 @@ const ForgotPassword = () => {
       email: "",
     },
     validationSchema: Yup.object({
-      email: Yup.string().email("Invalid email address").required("Email is required"),
+      email: Yup.string().email("Please enter a valid email address.").required("Email is required"),
     }),
     onSubmit: async (values) => {
       setLoading(true);
@@ -114,6 +114,15 @@ const ForgotPassword = () => {
             >
               {loading ? "Sending OTP..." : "Send OTP"}
             </Button>
+            <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
+              <Button
+                variant="text"
+                sx={{ textTransform: "none", fontWeight: 600, color: colors.TEXT_SECONDARY }}
+                onClick={() => router.push("/login")}
+              >
+                Back to Login
+              </Button>
+            </Box>
           </Paper>
         </form>
       </Container>
