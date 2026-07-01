@@ -162,7 +162,11 @@ export default function VerifyOtp() {
         } catch (err: unknown) {
           console.error(err);
           const error = err as { response?: { data?: { message?: string } }, message?: string };
-          showSnackbar(error?.response?.data?.message || error?.message || "Failed to reset password.", "error");
+          let errorMessage = error?.response?.data?.message || error?.message || "Failed to reset password.";
+          if (errorMessage.toLowerCase().includes("invalid") || errorMessage.toLowerCase().includes("otp") || errorMessage.toLowerCase().includes("validation")) {
+            errorMessage = "Invalid OTP. Please enter the correct verification code.";
+          }
+          showSnackbar(errorMessage, "error");
         } finally {
           setLoading(false);
         }
@@ -202,7 +206,7 @@ export default function VerifyOtp() {
         console.error(err);
         const error = err as { response?: { data?: { message?: string } }, message?: string };
         let errorMessage = error?.response?.data?.message || error?.message || "";
-        if (!errorMessage || errorMessage.toLowerCase().includes("invalid") || errorMessage.toLowerCase().includes("otp")) {
+        if (!errorMessage || errorMessage.toLowerCase().includes("invalid") || errorMessage.toLowerCase().includes("otp") || errorMessage.toLowerCase().includes("validation")) {
             errorMessage = "Invalid OTP. Please enter the correct verification code.";
         }
         showSnackbar(errorMessage, "error");
